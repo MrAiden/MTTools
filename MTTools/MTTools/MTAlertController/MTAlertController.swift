@@ -17,14 +17,37 @@ extension MTAlertController {
         /// 表单
         case actionSheet
     }
+    
+    // 依赖区域
+    enum Dependency {
+        /// 标题
+        case title
+        /// 消息
+        case message
+        /// 按钮
+        case action
+    }
+    
+    // 依赖区域位置
+    enum Position {
+        /// 上方
+        case top
+        /// 下方
+        case bottom
+    }
 }
 
 class MTAlertController: UIViewController {
-    // MARK: - UI components
+    
+    // MARK: - Property
     /// 详情
     private let message: String?
     /// 转场动画
     private let transitioning: MTAlertTransitioning
+    /// 样式
+    private let style: MTAlertController.Style
+    
+    // MARK: - UI components
     /// 内容布局
     private var _stackView: UIStackView!
     /// 内容
@@ -44,6 +67,7 @@ class MTAlertController: UIViewController {
     // MARK: - Life Cycle
     init(title: String?, message: String?, style: MTAlertController.Style = .alert) {
         self.message = message
+        self.style = style
         self.transitioning = MTAlertTransitioning(style: style)
         super.init(nibName: nil, bundle: nil)
         self.title = title
@@ -66,15 +90,91 @@ class MTAlertController: UIViewController {
     
     private func setupViews() {
         view.backgroundColor = UIColor.white
+        
+        /// 内容
+        titleLabel.text = title
+        messageLabel.text = message
+        contentStackView.addArrangedSubview(titleLabel)
+        contentStackView.addArrangedSubview(messageLabel)
+        contentView.addSubview(contentStackView)
+        
+        /// 按钮
+        actionsView.addSubview(actionsStackView)
+        actionsView.isHidden = true
+        
+        /// 布局
+        stackView.addArrangedSubview(contentView)
+        stackView.addArrangedSubview(actionsView)
+        view.addSubview(stackView)
+        
         view.setNeedsUpdateConstraints()
     }
     
     override func updateViewConstraints() {
+        /// 内间距
+        let inset: UIEdgeInsets = style == .alert ? UIEdgeInsets(top: 20.0, left: 20.0, bottom: 20.0, right: 20.0) : UIEdgeInsets(top: 20.0, left: 20.0, bottom: view.safeAreaInsets.bottom, right: 20.0)
+        let minWidth = min(max(MTHelpers.scale(width: 280.0), 300.0), 300.0)
+        
+        contentStackView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        actionsStackView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        stackView.snp.makeConstraints { make in
+            make.edges.equalTo(inset)
+        }
         view.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.size.equalTo(CGSize(width: 270.0, height: 270.0))
+            make.left.greaterThanOrEqualToSuperview().offset(20.0)
+            make.width.lessThanOrEqualTo(300.0)
+            make.width.greaterThanOrEqualTo(minWidth)
+            make.height.greaterThanOrEqualTo(150.0)
         }
+        view.layer.cornerRadius = 10.0
         super.updateViewConstraints()
+    }
+}
+
+// MARK: - Public func
+extension MTAlertController {
+    
+    /// 添加操作
+    /// - Parameter action: 操作
+    func addAction(_ action: MTAlertAction) {
+        
+    }
+    
+    /// 添加自定义控件
+    /// - Parameters:
+    ///   - view: 自定义控件
+    ///   - dependency: 依赖
+    ///   - position: 位置
+    func addCustomView(_ view: UIView, dependency: MTAlertController.Dependency = .message, position: MTAlertController.Position = .bottom) {
+        switch dependency {
+        case .title:
+            if position == .top {
+                contentStackView.insertArrangedSubview(view, aboveSubview: titleLabel)
+            } else {
+                contentStackView.insertArrangedSubview(view, aboveSubview: messageLabel)
+            }
+            
+            // 更新 contentStackView 显示
+        case .message:
+            if position == .top {
+                contentStackView.insertArrangedSubview(view, aboveSubview: messageLabel)
+            } else {
+                contentStackView.addArrangedSubview(view)
+            }
+            
+            // 更新 contentStackView 显示
+        case .action:
+            if position == .top {
+                stackView.insertArrangedSubview(view, aboveSubview: actionsView)
+            } else {
+                stackView.addArrangedSubview(view)
+            }
+        }
     }
 }
 
@@ -141,5 +241,33 @@ private extension MTAlertController {
             _actionsStackView.distribution = .fillEqually
         }
         return _actionsStackView
+    }
+}
+
+// MARK: - UIStackView
+private extension UIStackView {
+    
+    /// 插入排列视图到指定视图下
+    /// - Parameters:
+    ///   - view: 插入的视图
+    ///   - siblingSubview: 指定视图
+    func insertArrangedSubview(_ view: UIView, belowSubview siblingSubview: UIView) {
+        guard let index = arrangedSubviews.firstIndex(of: siblingSubview) else {
+            assertionFailure("目标视图不在当前的排列视图中")
+            return
+        }
+        insertArrangedSubview(view, at: index + 1)
+    }
+    
+    /// 插入排量视图到指定视图上
+    /// - Parameters:
+    ///   - view: 插入的视图
+    ///   - siblingSubview: 指定视图
+    func insertArrangedSubview(_ view: UIView, aboveSubview siblingSubview: UIView) {
+        guard let index = arrangedSubviews.firstIndex(of: siblingSubview) else {
+            assertionFailure("目标视图不在当前的排列视图中")
+            return
+        }
+        insertArrangedSubview(view, at: index)
     }
 }
